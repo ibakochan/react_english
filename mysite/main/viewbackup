@@ -1,0 +1,29 @@
+        tests = Test.objects.all()
+        session_tests = Test.objects.filter(pk__in=test_ids)
+
+        # Iterate over each test and create a ConnectTestForm instance with initial data
+        for test in tests:
+            initial_data = {'classroom': test.classroom.all()}
+            connect_form = ConnectTestForm(initial=initial_data, test_pk=test.pk)
+
+        return render(request, self.template_name, {
+                'users': CustomUser.objects.all(),
+                'schools': School.objects.all(),
+                'classrooms': classrooms,
+                'tests': tests,
+                'questions': questions,
+                'options': options,
+                'school_form': SchoolCreateForm(),
+                'test_form': TestCreateForm(),
+                'question_form': QuestionCreateForm(),
+                'option_form': OptionCreateForm(),
+                'classroom_form': ClassroomCreateForm(),
+                'signup_form': CustomUserCreationForm(),
+                'test_records': test_records,
+                'account_sessions': account_sessions,
+                'session_tests': session_tests,
+                'connect_form': connect_form
+            })
+
+
+        initial_data = Classroom.objects.filter(test__in=tests)

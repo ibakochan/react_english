@@ -1,0 +1,402 @@
+
+
+<script>
+$(document).ready(function() {
+    // AJAX for creating classrooms
+    $('.createClassroomForm').submit(function(e) {
+        e.preventDefault(); // prevent the form from submitting normally
+
+        var form = $(this);
+        var url = form.attr('action');
+
+        var formData = new FormData(this); // Create FormData object from form data
+
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: formData, // Use FormData object
+            processData: false, // Prevent jQuery from processing the data
+            contentType: false, // Prevent jQuery from setting contentType
+            success: function(data) {
+                if (data.success) {
+                    // Append the newly created classroom to the list
+                    $('#classroomList').append(data.html);
+                } else {
+                    // Display an error message or handle the error appropriately
+                    console.log(data.message);
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // log any errors
+            }
+        });
+    });
+});
+</script>
+
+<script>
+$(document).ready(function() {
+    // AJAX for creating tests
+    $('.createTestForm').submit(function(e) {
+        e.preventDefault(); // prevent the form from submitting normally
+
+        var form = $(this);
+        var url = form.attr('action');
+
+        var formData = new FormData(this); // Create FormData object from form data
+
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: formData, // Use FormData object
+            processData: false, // Prevent jQuery from processing the data
+            contentType: false, // Prevent jQuery from setting contentType
+            success: function(data) {
+                if (data.success) {
+                    // Handle success
+                } else {
+                    // Display an error message or handle the error appropriately
+                    console.log(data.message);
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // log any errors
+            }
+        });
+    });
+});
+</script>
+
+
+<script>
+$(document).ready(function() {
+    // AJAX for creating options
+    $('.createOptionForm').submit(function(e) {
+        e.preventDefault(); // prevent the form from submitting normally
+
+        var form = $(this);
+        var url = form.attr('action');
+
+        var formData = new FormData(this); // Create FormData object from form data
+
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: formData, // Use FormData object
+            processData: false, // Prevent jQuery from processing the data
+            contentType: false, // Prevent jQuery from setting contentType
+            success: function(data) {
+                if (data.success) {
+                    // Handle success
+                } else {
+                    // Display an error message or handle the error appropriately
+                    console.log(data.message);
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // log any errors
+            }
+        });
+    });
+});
+</script>
+
+<script>
+$(document).ready(function() {
+    // AJAX for creating questions
+    $('.createQuestionForm').submit(function(e) {
+        e.preventDefault(); // prevent the form from submitting normally
+
+        var form = $(this);
+        var url = form.attr('action');
+
+        var formData = new FormData(this); // Create FormData object from form data
+
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: formData, // Use FormData object
+            processData: false, // Prevent jQuery from processing the data
+            contentType: false, // Prevent jQuery from setting contentType
+            success: function(data) {
+                if (data.success) {
+                    // Handle success
+                } else {
+                    // Display an error message or handle the error appropriately
+                    console.log(data.message);
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // log any errors
+            }
+        });
+    });
+});
+</script>
+
+</body>
+
+
+class QuestionCreateForm(forms.ModelForm):
+    # This is a form for creating a schedule.
+    # You can write a title, choose color, category and upload a picture.
+    max_upload_limit = 2 * 1024 * 1024
+    max_upload_limit_text = naturalsize(max_upload_limit)
+    max_sound_upload_limit = 10 * 1024 * 1024
+    max_sound_upload_limit_text = naturalsize(max_sound_upload_limit)
+
+    question_picture = forms.FileField(required=False, label='Upload limit <= '+max_upload_limit_text)
+    upload_field_name = 'question_picture'
+    question_sound = forms.FileField(required=False, label='Upload limit <= '+max_sound_upload_limit_text)
+    upload_sound_field_name = 'question_sound'
+
+
+
+    class Meta:
+        model = Question
+        fields = ['name', 'question_picture', 'question_sound']
+
+        #Using widgets again for some style.
+    widgets = {
+        'name': forms.TextInput(attrs={'class': 'form-control'}),
+    }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        question = cleaned_data.get('question_picture')
+        if question is None:
+            return
+        if len(question) > self.max_upload_limit:
+            self.add_error('question_picture', "File must be < "+self.max_upload_limit_text+" bytes")
+
+        sound_cleaned_data = super().clean()
+        question_s = sound_cleaned_data.get('question_sound')
+        if question_s is None:
+            return
+        if len(question_s) > self.max_sound_upload_limit:
+            self.add_error('question_sound', "File must be < "+self.max_sound_upload_limit_text+" bytes")
+
+
+
+    def save(self, commit=True):
+        instance = super(QuestionCreateForm, self).save(commit=False)
+
+        f = instance.question_picture
+        if isinstance(f, InMemoryUploadedFile):
+            bytearr = f.read()
+            instance.question_content_type = f.content_type
+            instance.question_picture = bytearr
+
+
+        if commit:
+            instance.save()
+
+        return instance
+
+    def save_sound(self, commit=True):
+        instance = super(QuestionCreateForm, self).save(commit=False)
+
+        f = instance.question_sound
+        if isinstance(f, InMemoryUploadedFile):
+            bytearr = f.read()
+            instance.question_sound_content_type = f.content_type
+            instance.question_sound = bytearr
+
+
+        if commit:
+            instance.save()
+
+        return instance
+
+
+
+
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+<script src="{% static 'main/test_submit.js' %}"></script>
+
+
+
+
+<script>
+    $(document).ready(function() {
+        $('.btn').click(function() {
+            // Get the ID of the clicked button
+            var btnId = $(this).attr('id');
+            // Extract the test ID from the button ID
+            var testId = btnId.replace('toggleFormBtn', '');
+            // Construct the corresponding content ID
+            var contentId = '#test' + testId + 'Content';
+            // Toggle the col-md-6 and col-md-12 classes for the #change div
+            var colDiv = $('#change');
+            if (colDiv.hasClass('col-md-6')) {
+                colDiv.removeClass('col-md-6').addClass('col-md-12');
+            } else {
+                colDiv.removeClass('col-md-12').addClass('col-md-6');
+            }
+            // Collapse or expand the content associated with the clicked button
+            $(contentId).collapse('toggle');
+        });
+    });
+</script>
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var toggleButtons = document.querySelectorAll('.btn.btn-dark.mb-3');
+
+        toggleButtons.forEach(function(toggleButton) {
+            toggleButton.addEventListener('click', function() {
+                var targetArea = document.getElementById('hiding'); // Select the area with the ID 'hiding'
+                if (targetArea.style.display === 'none') {
+                    targetArea.style.display = 'block';
+                } else {
+                    targetArea.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+
+
+
+
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var testButtons = document.querySelectorAll('.btn.btn-dark.mb-3');
+        testButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                var testContent = button.nextElementSibling;
+                var firstQuestion = testContent.querySelector('.question');
+                firstQuestion.style.display = 'block';
+                var otherQuestions = testContent.querySelectorAll('.question:not(#' + firstQuestion.id + ')');
+                otherQuestions.forEach(function(question) {
+                    question.style.display = 'none';
+                });
+
+                testButtons.forEach(function(otherButton) {
+                    if (otherButton !== button) {
+                        if (otherButton.style.display === 'none') {
+                            otherButton.style.display = 'block';
+                        } else {
+                            otherButton.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        });
+    });
+</script>
+
+
+
+<script>
+function submitForm(questionIndex) {
+    var currentQuestion = document.getElementById('question' + questionIndex);
+    currentQuestion.style.display = 'none';
+    var nextQuestionIndex = questionIndex + 1;
+    var nextQuestion = document.getElementById('question' + nextQuestionIndex);
+    if (nextQuestion) {
+        nextQuestion.style.display = 'block';
+    } else {
+        var currentTestContent = currentQuestion.closest('.collapse');
+        var nextTestContent = currentTestContent.nextElementSibling;
+        if (nextTestContent) {
+            nextTestContent.classList.add('show');
+            var nextTestQuestions = nextTestContent.querySelectorAll('.question');
+            nextTestQuestions.forEach(function(question) {
+                question.style.display = 'none';
+            });
+            var firstQuestionOfNextTest = nextTestContent.querySelector('.question');
+            if (firstQuestionOfNextTest) {
+                firstQuestionOfNextTest.style.display = 'block';
+            }
+        }
+    }
+
+    return false;
+}
+</script>
+
+
+
+
+
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var testButtons = document.querySelectorAll('.btn.btn-dark.mb-3');
+    testButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            var testContent = button.nextElementSibling;
+            var firstQuestion = testContent.querySelector('.question');
+            firstQuestion.style.display = 'block';
+            var otherQuestions = testContent.querySelectorAll('.question:not(#' + firstQuestion.id + ')');
+            otherQuestions.forEach(function(question) {
+                question.style.display = 'none';
+            });
+        });
+    });
+});
+</script>
+
+
+<script>
+$('.createQuestionForm').submit(function (e) {
+    e.preventDefault();
+
+    var form = $(this);
+    var formData = new FormData(form[0]);
+
+    formData.delete('csrfmiddlewaretoken');
+    var csrfToken = $('input[name=csrfmiddlewaretoken]').val();
+    formData.append('csrfmiddlewaretoken', csrfToken);
+
+    var url = form.attr('action');
+
+    $.ajax({
+        type: form.attr('method'),
+        url: url,
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (data) {
+            console.log(data);
+
+            if (data.success) {
+                var questionContainer = $('.question-container'); // Selecting the container directly
+
+                var newQuestionButton = '<button class="btn btn-primary mb-3">' + data.name + '</button>';
+
+                $('.question-container').append(newQuestionButton);
+
+                // Add an event listener if needed
+                newQuestionButton.on('click', function () {
+                    // Handle button click event if needed
+                });
+
+                form.trigger('reset');
+            } else {
+                // Handle errors if necessary
+            }
+        },
+        error: function (xhr, status, error) {
+            console.log('Error:', xhr.responseJSON);
+            alert('An error occurred: ' + xhr.statusText);
+        }
+    });
+});
+</script>
+
+
+
+
+

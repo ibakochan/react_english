@@ -1,0 +1,432 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useCookies } from 'react-cookie';
+import { Button, Form } from 'react-bootstrap';
+
+const UserTestRecords = () => {
+  const [classrooms, setClassrooms] = useState([]);
+  const [tests, setTests] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [cookies, setCookie, removeCookie] = useCookies(['csrftoken']);
+  const [maxScores, setMaxscores] = useState([]);
+  const [sessionDetails, setSessionDetails] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeClassroomId, setActiveClassroomId] = useState(null);
+  const [activeTestId, setActiveTestId] = useState(null);
+  const [activeUserId, setActiveUserId] = useState(null);
+  const [activeSessionId, setActiveSessionId] = useState(null);
+  const [userDetailButtonActive, setUserDetailButtonActive] = useState(false);
+  const [activeUserToUpdate, setActiveUserToUpdate] = useState(null);
+  const [formData, setFormData] = useState({});
+
+  const fetchClassrooms = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const classroomResponse = await axios.get('/api/classrooms/my-classroom/', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+      console.log('Fetched classrooms response:', classroomResponse);
+      console.log('Fetched classrooms data:', classroomResponse.data);
+      setClassrooms(classroomResponse.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching classrooms:', error.response ? error.response.data : error.message);
+      setError('Failed to fetch classrooms.');
+      setLoading(false);
+    }
+  };
+
+
+  const fetchTests = async (classroomId) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const testsResponse = await axios.get(`/api/name-id-tests/`);
+      console.log('Fetched tests:', testsResponse.data);
+      setTests(testsResponse.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching tests:', error);
+      setError('Failed to fetch tests.');
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async (classroomId, userId) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const usersResponse = await axios.get(`/api/users/by-classroom/${classroomId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+
+      const sortedUsers = usersResponse.data.sort((a, b) => {
+        const numA = a.student?.student_number || '0000';
+        const numB = b.student?.student_number || '0000';
+        return numA.localeCompare(numB, undefined, { numeric: true });
+      });
+
+      console.log('Fetched users:', sortedUsers);
+      setUsers(sortedUsers);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setError('Failed to fetch users.');
+      setLoading(false);
+    }
+  };
+
+  const toggleUserDetailsForUserDetailButton = async (classroomId) => {
+    if (userDetailButtonActive) {
+      setUserDetailButtonActive(null);
+      setUsers([]);
+    } else {
+      setUserDetailButtonActive(classroomId);
+      await fetchUsers(classroomId);
+    }
+  };
+
+
+  const fetchMaxScores = async (testId, userId) => {
+    try {
+      setError(null);
+      const maxScoresResponse = await axios.get(`/api/maxscore/by-test-and-user/${testId}/${userId}/`);
+      console.log('Fetched sessions:', maxScoresResponse.data);
+      return maxScoresResponse.data;
+    } catch (error) {
+      console.error('Error fetching maxScores:', error);
+      setError('Failed to fetch maxScores.');
+    }
+  };
+
+  const fetchSessions = async (testId, userId) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const sessionsResponse = await axios.get(`/api/only-sessions/by-test-and-user/${testId}/${userId}/`);
+      console.log('Fetched sessions:', sessionsResponse.data);
+      setSessions(sessionsResponse.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+      setError('Failed to fetch sessions.');
+      setLoading(false);
+    }
+  };
+
+  const fetchSessionDetails = async (sessionId) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await axios.get(`/api/sessions/${sessionId}/`);
+      console.log('Fetched session details:', response.data);
+      setSessionDetails(prevDetails => ({
+        ...prevDetails,
+        [sessionId]: response.data,
+      }));
+      setLoading(false);
+    } catch (error) {
+      console.error(`Error fetching session details for ID ${sessionId}:`, error);
+      setError(`Failed to fetch session details for ID ${sessionId}.`);
+      setLoading(false);
+    }
+  };
+
+  const toggleClassroomDetails = async (classroomId) => {
+    if (activeClassroomId === classroomId) {
+      setActiveClassroomId(null);
+      setTests([]);
+      setUsers([]);
+    } else {
+      setActiveClassroomId(classroomId);
+      await fetchTests(classroomId);
+      await fetchUsers(classroomId);
+    }
+  };
+
+  const toggleTestDetails = async (testId) => {
+    if (activeTestId === testId) {
+      setActiveTestId(null);
+      setSessions([]);
+      setActiveUserId(null);
+    } else {
+      setActiveTestId(testId);
+      setSessions([]);
+      setActiveUserId(null);
+      const scores = await Promise.all(users.map(user =>
+        fetchMaxScores(testId, user.id).catch(error => {
+          console.error(`Error fetching max score for user ${user.id}:`, error);
+          return []; // Return an empty array in case of error
+        })
+      ));
+
+      setMaxscores(scores.flat());
+    }
+  };
+
+  const toggleUserDetails = async (userId) => {
+    if (activeUserId === userId) {
+      setActiveUserId(null);
+      setSessions([]);
+    } else {
+      setActiveUserId(userId);
+      if (activeTestId) {
+        await fetchSessions(activeTestId, userId);
+      }
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = async (userId, e) => {
+    e.preventDefault();
+    const { username, password, student_number } = formData;
+
+    if (!username || !password || !student_number) {
+      setError('全てのフィールドを入力してください');
+      return;
+    }
+    try {
+      const csrfToken = cookies.csrftoken;
+      const response = await axios.post(`accounts/update-student/${userId}/`, formData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          'X-CSRFToken': csrfToken
+        }
+      });
+      console.log('Student updated successfully:', response.data);
+      alert('Student info updated successfully!');
+    } catch (error) {
+      console.error('Error updating student:', error.response ? error.response.data : error.message);
+    }
+  };
+
+  const toggleSessionDetails = async (sessionId) => {
+    if (activeSessionId === sessionId) {
+      setActiveSessionId(null);
+    } else {
+      setActiveSessionId(sessionId);
+      await fetchSessionDetails(sessionId);
+    }
+  };
+
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  };
+
+  const renderAudio = (question) => {
+    if (question.question_sound) {
+      return <audio controls src={question.question_sound} />;
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    fetchClassrooms(); // Fetch classrooms initially
+  }, []);
+
+  return (
+    <div>
+      {loading && <p>Loading...</p>}
+      {error && <p>{error}</p>}
+          <h2>Classroom Records</h2>
+          <ul>
+            {classrooms.map(classroom => (
+              <div key={classroom.id}>
+                <button
+                  style={{ height: '120px', width: '200px', padding: '10px', margin: '5px', border: '5px solid black' }}
+                  className={`btn btn-dark mb-3 toggle-classroom-btn${activeClassroomId === classroom.id ? ' active' : ''}`}
+                  onClick={() => toggleClassroomDetails(classroom.id)}
+                >
+                  <h5>{classroom.name}の</h5>
+                  <h5>テスト記録</h5>
+                </button>
+                <p>
+                <button
+                  style={{ height: '120px', width: '200px', padding: '10px', margin: '5px', border: '5px solid black' }}
+                  className={`btn btn-primary mb-3`}
+                  onClick={() => toggleUserDetailsForUserDetailButton(classroom.id)}
+                >
+                  {userDetailButtonActive ? '生徒管理閉じる' : '生徒管理開く'}
+                </button>
+                </p>
+                {userDetailButtonActive && (
+                  <div className="user-list">
+                    {users.map(user => (
+                      <div key={user.id}>
+                      <button
+                        style={{ height: '60px', width: '200px', padding: '10px', margin: '5px', border: '5px solid black' }}
+                        className={`btn btn-success mb-3`}
+                        onClick={() => setActiveUserToUpdate(user.id)}
+                      >
+                        {user.username} - {user.student.student_number}
+                      </button>
+                      {activeUserToUpdate == user.id ? (
+                      <form onSubmit={(e) => handleSubmit(user.id, e)}>
+                      <div>
+                        <input
+                          type="text"
+                          name="username"
+                          value={formData.username}
+                          onChange={handleInputChange}
+                          className="form-control"
+                          placeholder="ユーザーネーム"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          className="form-control"
+                          placeholder="パスワード"
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          name="student_number"
+                          value={formData.student_number}
+                          onChange={handleInputChange}
+                          className="form-control"
+                          placeholder="出席番号"
+                        />
+                      </div>
+                      <button
+                        style={{ height: '60px', width: '200px', padding: '10px', margin: '5px', border: '5px solid black' }}
+                        className={`btn btn-dark mb-3 `}
+                        onClick={() => setActiveUserToUpdate(user.id)}
+                      >
+                      更新
+                      </button>
+                      </form>
+                      ) : (
+                      null
+                      )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {activeClassroomId === classroom.id && (
+                  <div className="classroom-details">
+                    {tests.map(test => (
+                      <span key={test.id}>
+                        {activeTestId === null || activeTestId === test.id ? (
+                        <span style={{ marginRight: '10px' }}>
+                        <button
+                          className={`btn btn-warning mb-3 toggle-test-btn ${activeTestId === test.id || activeTestId === null ? 'active' : 'd-none'}`}
+                          style={{ height: '200px', width: '200px', padding: '10px', border: '5px solid black', position: 'relative' }}
+                          onClick={() => toggleTestDetails(test.id)}
+                        >
+                          <span
+                            className="text-center text-white"
+                            style={{ background: 'rgba(0, 0, 0, 0.5)', padding: '5px', borderRadius: '5px', marginBottom: '10px' }}
+                          >
+                            {test.name}
+                          </span>
+                          {test.test_picture && (
+                            <img src={test.test_picture} alt="Question" width="150" height="150" />
+                          )}
+                        </button>
+                        </span>
+                        ) : null}
+                        {activeTestId === test.id && (
+                          <div className="test-details">
+                            {users.map(user => (
+                              <span key={user.id}>
+                                {activeUserId === null || activeUserId === user.id ? (
+                                <button
+                                  className={`btn btn-success mb-3 toggle-user-btn${activeUserId === user.id ? ' active' : ''}`}
+                                  style={{ height: '120px', width: '200px', padding: '10px', margin: '5px', border: '5px solid black' }}
+                                  onClick={() => toggleUserDetails(user.id)}
+                                >
+                                  <h5>{user.username}</h5>
+                                  <h5>出席番号: {user.student.student_number}</h5>
+                                  {maxScores.map(score =>
+                                    score.user === user.id && (
+                                      <h5 key={score.user}>最大記録：{score.score}/{score.total_questions}</h5>
+                                    )
+                                  )}
+                                </button>
+                                ) : null}
+                                {activeUserId === user.id && (
+                                  <div className="user-details">
+                                    {sessions.map(session => (
+                                      <span key={session.id}>
+                                        {activeSessionId === null || activeSessionId === session.id ? (
+                                        <button
+                                          className={`btn btn-info mb-3 toggle-session-btn${activeSessionId === session.id ? ' active' : ''}`}
+                                          style={{ height: '120px', width: '200px', padding: '10px', margin: '5px', border: '5px solid black' }}
+                                          onClick={() => toggleSessionDetails(session.id)}
+                                        >
+                                          {session.timestamp ? formatTimestamp(session.timestamp) : `Session ${session.id}`}
+                                          <h4>点数:{session.total_recorded_score}/{session.total_questions}</h4>
+                                        </button>
+                                        ) : null}
+                                        {activeSessionId === session.id && sessionDetails[session.id] && (
+                                          <div className="record-details">
+                                            {sessionDetails[session.id].test_records.map(record => (
+                                              <div key={record.id} style={{ border: '3px solid black', padding: '10px', marginBottom: '10px' }}>
+                                                {record.question_name && (
+                                                  <h4>Question: {record.question_name}</h4>
+                                                )}
+                                                {record.question && (
+                                                  <>
+                                                    {renderAudio(record.question)}
+                                                    {record.question.options.map(option => (
+                                                      option.is_correct && (
+                                                        <p key={option.id}>Correct option: {option.name}</p>
+                                                      )
+                                                    ))}
+                                                  </>
+                                                )}
+                                                {record.selected_option_name && (
+                                                  <p>Selected Option: {record.selected_option_name}</p>
+                                                )}
+                                                {record.total_recorded_score === 0 ? (
+                                                  <p>Recorded Score: {record.recorded_score}</p>
+                                                ) : (
+                                                  <h2>Total Score: {record.total_recorded_score}</h2>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </ul>
+    </div>
+  );
+};
+
+export default UserTestRecords;

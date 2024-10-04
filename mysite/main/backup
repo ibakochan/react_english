@@ -1,0 +1,500 @@
+{% load static %}
+<html lang="en-JP">
+<link href="{% static 'main/test.css' %}" rel="stylesheet">
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+
+<body style="background-image: url('{% static 'main/WhatsApp画像 2024-02-14 13.27.37_9343389c.jpg' %}'); background-size: 100% 100%; background-position: center; background-repeat: no-repeat; margin: 0; padding: 0;">
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6" id="hiding">
+        <div class="card mb-4">
+        <div class="card-body">
+            <a {% if user.is_authenticated %} href="{% url 'accounts:logout' %}?next={% url 'accounts:login' %}?next={% url 'main:profile' %}"
+            {% else %} href="{% url 'accounts:login' %}?next={% url 'main:profile' %}"
+            {% endif %} class="w-50 pl-3 pb-4">
+            <div class="card border-0 border-bottom-blue shadow-lg shadow-hover">
+            <div class="card-body text-center">
+            <div class="text-center">
+            </div>
+            {% if user.is_authenticated %}
+            Logout
+            {% else %}
+            Login
+            {% endif %}
+            </div>
+            </div>
+            </a>
+            <button id="toggleFormBtn" class="btn btn-success mb-3" data-toggle="collapse" data-target="#signupForm">Create a new account!</button>
+            <div class="collapse" id="signupForm">
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in signup_form %}
+                        <label class="text-dark font-weight-bold" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                {% endfor %}
+                <div class="text-center mt-3">
+                    <button type="submit" class="btn btn-success btn-lg">Create!</button>
+                </div>
+                </form>
+            </div>
+            <form method="post" action="{% url 'main:profile' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="school_name">School Name:</label>
+                    <input type="text" name="school_name" id="school_name" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="school_password">Password:</label>
+                    <input type="password" name="school_password" id="school_password" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="classroom_name">Classroom Name:</label>
+                    <input type="text" name="classroom_name" id="classroom_name" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="classroom_password">Classroom Password:</label>
+                    <input type="password" name="classroom_password" id="classroom_password" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </form>
+
+
+            {% for classroom in classrooms %}
+                {% if classroom_name == classroom.name and classroom_password == classroom.hashed_password %}
+                <h2>Click on a test to enter the classroom!</h2>
+                {% endif %}
+            {% endfor %}
+
+
+
+
+            <div class="container mt-5" id="classroomList">
+                {% for school in schools %}
+                    {% if school.name == school_name and school.hashed_password == school_password %}
+                        {% if classroom_name == '' and classroom_password == '' %}
+                        <div>
+                                <h5 class="card-title">Create Classroom</h5>
+                                <form class="createClassroomForm" method="post" action="{% url 'main:classroom_create' school.pk %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    {% for field in classroom_form %}
+                                        <div class="form-group">
+                                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                            {{ field }}
+                                        </div>
+                                    {% endfor %}
+                                    <button type="submit" class="btn btn-success">Create Classroom</button>
+                                </form>
+                        </div>
+                        {% endif %}
+
+                        {% for classroom in classrooms %}
+                            {% if classroom.school.name == school_name and classroom.school.hashed_password == school_password %}
+                            {% if classroom.name == classroom_name and classroom.hashed_password == classroom_password %}
+                            <div>
+                                        <h5 class="card-title">Create Test</h5>
+                                        <form class="createTestForm" method="post" action="{% url 'main:test_create' classroom.pk %}" enctype="multipart/form-data">
+                                            {% csrf_token %}
+                                            {% for field in test_form %}
+                                                <div class="form-group">
+                                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                    {{ field }}
+                                                </div>
+                                            {% endfor %}
+                                            <button type="submit" class="btn btn-success">Create Test</button>
+                                        </form>
+                            </div>
+                            <h3>Current tests!</h3>
+                            {% for test in tests %}
+                            {% if test.classroom == classroom %}
+                            <button id="toggleFormBtn" class="btn btn-primary mb-3" data-toggle="collapse" data-target="#{{ test.pk }}Content">{{ test.name }}</button>
+                            <div class="collapse" id="{{ test.pk }}Content">
+                                <img style="width:100px;height:100px;margin-top: 8px; border:3px solid black;" src="{% url 'main:test_picture' test.id %}" alt="Lesson">
+                                    <h5 class="card-title">Create Question</h5>
+                                    <form class="createQuestionForm" method="post" action="{% url 'main:question_create' test.pk %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                        {% for field in question_form %}
+                                            <div class="form-group">
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                {{ field }}
+                                            </div>
+                                        {% endfor %}
+                                        <button type="submit" class="btn btn-success">Create Question</button>
+                                    </form>
+                            <h3>Current Questions!</h3>
+                            {% for question in questions %}
+                            {% if question.test == test %}
+                                <button id="toggleFormBtn" class="btn btn-primary mb-3" data-toggle="collapse" data-target="#{{ test.name }}{{ question.pk }}Content">{{ question.name }}</button>
+                                <div class="collapse" id="{{ test.name }}{{ question.pk }}Content">
+                                <img style="width:100px;height:100px;margin-top: 8px; border:3px solid black;" src="{% url 'main:question_picture' question.id %}" alt="Lesson">
+                                    <h5 class="card-title">Create Option</h5>
+                                    <form class="createOptionForm" method="post" action="{% url 'main:option_create' question.pk %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                        {% for field in option_form %}
+                                            <div class="form-group">
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                                {{ field }}
+                                            </div>
+                                        {% endfor %}
+                                        <button type="submit" class="btn btn-success">Create Option</button>
+                                    </form>
+                                    <h3>Current options</h3>
+                                    {% for option in options %}
+                                    {% if option.question == question %}
+                                    <div>{{ option.name }}</div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                            {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        </div>
+        </div>
+
+        <div class="col-md-6" id="change">
+            <div class="quiz-container d-flex justify-content-center align-items-center" id="quiz">
+                <div class="quiz-header">
+                    {% for classroom in classrooms %}
+                    {% if classroom_name == classroom.name and classroom_password == classroom.hashed_password %}
+                    <h2>You are in the Classroom: {{ classroom.name }}</h2>
+                    {% for test in tests %}
+                    {% if test.classroom == classroom %}
+                    <button id="toggleFormBtn{{ test.pk }}" class="btn btn-dark mb-3" style="width: 400px; height: 120px;" data-toggle="collapse" data-target="#test{{ test.pk }}Content">
+                        {{ test.name }}<img style="width:100px;height:100px;margin-top: 8px; border:3px solid black;" src="{% url 'main:test_picture' test.id %}" alt="Test">
+                    </button>
+                    <div class="collapse" id="test{{ test.pk }}Content">
+                        {{ test.name }}
+                        <div class="message"></div>
+                        <div id="completion-message"></div>
+                        {% for question in questions %}
+                        {% if question.test == test %}
+                        <div class="question" id="question{{ question.id }}" style="display: {% if forloop.first %}block{% else %}none{% endif %}">
+                            <h2>{{ question }}<img style="width:100px;height:100px;margin-top: 8px; border:3px solid black;" src="{% url 'main:question_picture' question.id %}" alt="Question"></h2>
+                            <ul class="list-unstyled">
+                                <form class="test-form" method="post" action="{% url 'main:test_submit' test.pk %}" onsubmit="submitForm({{ question.id }})">
+                                    {% csrf_token %}
+                                    <div class="container-fluid">
+                                    <div class="row">
+                                    {% for option in options %}
+                                    {% if option.question == question %}
+                                    <div class="col-md-6">
+                                            {% for field in test_submission_form %}
+                                            {% for choice in field %}
+                                            {% if choice.choice_label == option.name %}
+                                                <img style="width:100px;height:100px;margin-top: 8px; border:3px solid black;" src="{% url 'main:option_picture' option.id %}" alt="Option">
+                                                <label>{{ choice }}</label>
+                                            {% endif %}
+                                            {% endfor %}
+                                            {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                    </div>
+                                    </div>
+                                    <button id="submit-btn" type="submit" onclick="submitForm({{ question.id }})">Submit answer for {{ question.name }}</button>
+                                </form>
+                            </ul>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+<script src="{% static 'main/test_submit.js' %}"></script>
+
+
+
+
+<script>
+    $(document).ready(function() {
+        $('.btn').click(function() {
+            // Get the ID of the clicked button
+            var btnId = $(this).attr('id');
+            // Extract the test ID from the button ID
+            var testId = btnId.replace('toggleFormBtn', '');
+            // Construct the corresponding content ID
+            var contentId = '#test' + testId + 'Content';
+            // Toggle the col-md-6 and col-md-12 classes for the #change div
+            var colDiv = $('#change');
+            if (colDiv.hasClass('col-md-6')) {
+                colDiv.removeClass('col-md-6').addClass('col-md-12');
+            } else {
+                colDiv.removeClass('col-md-12').addClass('col-md-6');
+            }
+            // Collapse or expand the content associated with the clicked button
+            $(contentId).collapse('toggle');
+        });
+    });
+</script>
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var toggleButtons = document.querySelectorAll('.btn.btn-dark.mb-3');
+
+        toggleButtons.forEach(function(toggleButton) {
+            toggleButton.addEventListener('click', function() {
+                var targetArea = document.getElementById('hiding'); // Select the area with the ID 'hiding'
+                if (targetArea.style.display === 'none') {
+                    targetArea.style.display = 'block';
+                } else {
+                    targetArea.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+
+
+
+
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var testButtons = document.querySelectorAll('.btn.btn-dark.mb-3');
+        testButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                var testContent = button.nextElementSibling;
+                var firstQuestion = testContent.querySelector('.question');
+                firstQuestion.style.display = 'block';
+                var otherQuestions = testContent.querySelectorAll('.question:not(#' + firstQuestion.id + ')');
+                otherQuestions.forEach(function(question) {
+                    question.style.display = 'none';
+                });
+
+                testButtons.forEach(function(otherButton) {
+                    if (otherButton !== button) {
+                        if (otherButton.style.display === 'none') {
+                            otherButton.style.display = 'block';
+                        } else {
+                            otherButton.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        });
+    });
+</script>
+
+
+
+<script>
+function submitForm(questionIndex) {
+    var currentQuestion = document.getElementById('question' + questionIndex);
+    currentQuestion.style.display = 'none';
+    var nextQuestionIndex = questionIndex + 1;
+    var nextQuestion = document.getElementById('question' + nextQuestionIndex);
+    if (nextQuestion) {
+        nextQuestion.style.display = 'block';
+    } else {
+        var currentTestContent = currentQuestion.closest('.collapse');
+        var nextTestContent = currentTestContent.nextElementSibling;
+        if (nextTestContent) {
+            nextTestContent.classList.add('show');
+            var nextTestQuestions = nextTestContent.querySelectorAll('.question');
+            nextTestQuestions.forEach(function(question) {
+                question.style.display = 'none';
+            });
+            var firstQuestionOfNextTest = nextTestContent.querySelector('.question');
+            if (firstQuestionOfNextTest) {
+                firstQuestionOfNextTest.style.display = 'block';
+            }
+        }
+    }
+
+    return false;
+}
+</script>
+
+
+
+
+
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var testButtons = document.querySelectorAll('.btn.btn-dark.mb-3');
+    testButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            var testContent = button.nextElementSibling;
+            var firstQuestion = testContent.querySelector('.question');
+            firstQuestion.style.display = 'block';
+            var otherQuestions = testContent.querySelectorAll('.question:not(#' + firstQuestion.id + ')');
+            otherQuestions.forEach(function(question) {
+                question.style.display = 'none';
+            });
+        });
+    });
+});
+</script>
+
+
+
+
+
+
+
+
+
+<script>
+$(document).ready(function() {
+    // AJAX for creating classrooms
+    $('.createClassroomForm').submit(function(e) {
+        e.preventDefault(); // prevent the form from submitting normally
+
+        var form = $(this);
+        var url = form.attr('action');
+
+        var formData = new FormData(this); // Create FormData object from form data
+
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: formData, // Use FormData object
+            processData: false, // Prevent jQuery from processing the data
+            contentType: false, // Prevent jQuery from setting contentType
+            success: function(data) {
+                if (data.success) {
+                    // Append the newly created classroom to the list
+                    $('#classroomList').append(data.html);
+                } else {
+                    // Display an error message or handle the error appropriately
+                    console.log(data.message);
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // log any errors
+            }
+        });
+    });
+});
+</script>
+
+<script>
+$(document).ready(function() {
+    // AJAX for creating tests
+    $('.createTestForm').submit(function(e) {
+        e.preventDefault(); // prevent the form from submitting normally
+
+        var form = $(this);
+        var url = form.attr('action');
+
+        var formData = new FormData(this); // Create FormData object from form data
+
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: formData, // Use FormData object
+            processData: false, // Prevent jQuery from processing the data
+            contentType: false, // Prevent jQuery from setting contentType
+            success: function(data) {
+                if (data.success) {
+                    // Handle success
+                } else {
+                    // Display an error message or handle the error appropriately
+                    console.log(data.message);
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // log any errors
+            }
+        });
+    });
+});
+</script>
+
+<script>
+$(document).ready(function() {
+    // AJAX for creating questions
+    $('.createQuestionForm').submit(function(e) {
+        e.preventDefault(); // prevent the form from submitting normally
+
+        var form = $(this);
+        var url = form.attr('action');
+
+        var formData = new FormData(this); // Create FormData object from form data
+
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: formData, // Use FormData object
+            processData: false, // Prevent jQuery from processing the data
+            contentType: false, // Prevent jQuery from setting contentType
+            success: function(data) {
+                if (data.success) {
+                    // Handle success
+                } else {
+                    // Display an error message or handle the error appropriately
+                    console.log(data.message);
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // log any errors
+            }
+        });
+    });
+});
+</script>
+
+<script>
+$(document).ready(function() {
+    // AJAX for creating options
+    $('.createOptionForm').submit(function(e) {
+        e.preventDefault(); // prevent the form from submitting normally
+
+        var form = $(this);
+        var url = form.attr('action');
+
+        var formData = new FormData(this); // Create FormData object from form data
+
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: formData, // Use FormData object
+            processData: false, // Prevent jQuery from processing the data
+            contentType: false, // Prevent jQuery from setting contentType
+            success: function(data) {
+                if (data.success) {
+                    // Handle success
+                } else {
+                    // Display an error message or handle the error appropriately
+                    console.log(data.message);
+                }
+            },
+            error: function(xhr, errmsg, err) {
+                console.log(xhr.status + ": " + xhr.responseText); // log any errors
+            }
+        });
+    });
+});
+</script>
+
+</body>
+

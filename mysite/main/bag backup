@@ -1,0 +1,111 @@
+class ProfilePageView(LoginRequiredMixin, View):
+
+
+    template_name = 'main/test.html'
+
+    def get(self, request):
+
+        test_records = TestRecords.objects.filter(user=request.user)
+        account_sessions = Sessions.objects.filter(user=request.user)
+
+        questions = list(Question.objects.all())
+        shuffle(questions)
+
+        options = list(Option.objects.all())
+        options.reverse()
+
+        test_ids = [session.number for session in account_sessions]
+        classrooms = Classroom.objects.all()
+
+        tests = Test.objects.all()
+        session_tests = Test.objects.filter(pk__in=test_ids)
+
+
+
+        connect_form = ConnectTestForm()
+
+        return render(request, self.template_name, {
+                'users': CustomUser.objects.all(),
+                'schools': School.objects.all(),
+                'classrooms': classrooms,
+                'tests': tests,
+                'questions': questions,
+                'options': options,
+                'school_form': SchoolCreateForm(),
+                'test_form': TestCreateForm(),
+                'question_form': QuestionCreateForm(),
+                'option_form': OptionCreateForm(),
+                'classroom_form': ClassroomCreateForm(),
+                'signup_form': CustomUserCreationForm(),
+                'test_records': test_records,
+                'account_sessions': account_sessions,
+                'session_tests': session_tests,
+                'connect_form': connect_form,
+            })
+
+    def post(self, request):
+        school_name = request.POST.get('school_name')
+        school_password = request.POST.get('school_password')
+        classroom_name = request.POST.get('classroom_name')
+        classroom_password = request.POST.get('classroom_password')
+
+
+        tests = Test.objects.all()
+        user_test_submissions = UserTestSubmission.objects.filter(user=request.user, test__in=tests)
+
+        test_records = TestRecords.objects.filter(user=request.user)
+        account_sessions = Sessions.objects.filter(user=request.user)
+        test_ids = [session.number for session in account_sessions]
+
+        session_tests = Test.objects.filter(pk__in=test_ids)
+
+
+
+
+        test_submission_form = TestSubmissionForm()
+        connect_form = ConnectTestForm()
+
+        options = list(Option.objects.all())
+        shuffle(options)
+        questions = list(Question.objects.all())
+        shuffle(questions)
+
+        modified_options = []
+
+        for option in options:
+            pk_length = len(str(option.pk))
+            option_name = remove_digits_from_end(option.name, pk_length)
+            modified_options.append({'option': option, 'option_name': option_name})
+
+        signup_form = CustomUserCreationForm(request.POST)
+        if signup_form.is_valid():
+            user = signup_form.save()
+            login(request, user)
+
+
+        return render(request, self.template_name, {
+            'modified_options': modified_options,
+            'users': CustomUser.objects.all(),
+            'schools': School.objects.all(),
+            'classrooms': Classroom.objects.all(),
+            'questions': questions,
+            'options': options,
+            'school_form': SchoolCreateForm(),
+            'test_form': TestCreateForm(),
+            'question_form': QuestionCreateForm(),
+            'option_form': OptionCreateForm(),
+            'classroom_form': ClassroomCreateForm(),
+            'school_name': school_name,
+            'school_password': school_password,
+            'classroom_name': classroom_name,
+            'classroom_password': classroom_password,
+            'tests': tests,
+            'test_submission_form': test_submission_form,
+            'signup_form': signup_form,
+            'user_test_submissions': user_test_submissions,
+            'connect_form': connect_form,
+            'test_records': test_records,
+            'account_sessions': account_sessions,
+            'session_tests': session_tests,
+        })
+
